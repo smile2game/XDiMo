@@ -1,0 +1,64 @@
+# -----------------------------------------------------------------------------
+# XDiMo 仓库 .gitignore
+# -----------------------------------------------------------------------------
+
+# 环境与 IDE
+.vscode/
+.idea/
+# 无 workflow 权限的 PAT 无法推送 workflow，默认不提交
+.github/workflows/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+*.so
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# 数据与权重（大文件不提交，请使用 data/ 与 ckpts/ 目录）
+data/
+ckpts/shared/
+ckpts/trained/
+share_ckpts/
+!data/.gitkeep
+!ckpts/shared/.gitkeep
+!ckpts/trained/.gitkeep
+
+# 输出与日志
+output/
+jlogs/
+preprocess/
+results/
+results_img/
+sample_videos/
+wandb/
+
+# 临时与缓存
+*.log
+*.tar.gz
+.cache/
+cache/
+*.tmp
+.ipynb_checkpoints/
+scripts/.hfd/
+
+# 系统与备份
+.DS_Store
+Thumbs.db
+*.bak
+* copy*
+* copy.py
+
+# 评测生成文件（可选，若需提交部分结果可删除对应行）
+test/
+*.mp4
+*.npz

@@ -1,0 +1,215 @@
+2025-06-30 21:27:10,699 - INFO - 开始FVD计算: /public/home/xdu23171214541/dits/Latte/test/630 vs /public/home/xdu23171214541/dits/Latte/test/real_videos
+2025-06-30 21:27:10,714 - INFO - 结果将保存到: fvd_results_20250630_212710.json
+2025-06-30 21:27:11,202 - INFO - 使用计算设备: cuda
+2025-06-30 21:27:11,202 - INFO - 加载本地I3D模型: /public/home/xdu23171214541/dits/Latte/share_ckpts/i3d_torchscript.pt
+2025-06-30 21:27:11,887 - INFO - I3D模型加载成功
+2025-06-30 21:27:11,887 - INFO - I3D模型加载成功
+2025-06-30 21:27:11,900 - INFO - 在 /public/home/xdu23171214541/dits/Latte/test/630 中找到 2048 个视频文件
+2025-06-30 21:27:11,906 - INFO - 在 /public/home/xdu23171214541/dits/Latte/test/real_videos 中找到 704 个视频文件
+2025-06-30 21:27:11,906 - INFO - 限制处理数量: 文件夹1=10, 文件夹2=10
+2025-06-30 21:27:11,907 - INFO - 开始处理文件夹1: 10个视频
+处理文件夹1:   0%|          | 0/10 [00:00<?, ?it/s]2025-06-30 21:27:12,455 - INFO - 视频处理完成: 1231.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.54s
+2025-06-30 21:27:12,456 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹1:  10%|█         | 1/10 [00:00<00:04,  1.83it/s]2025-06-30 21:27:12,875 - INFO - 视频处理完成: 2013.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.42s
+2025-06-30 21:27:12,875 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹1:  20%|██        | 2/10 [00:00<00:03,  2.12it/s]2025-06-30 21:27:13,346 - INFO - 视频处理完成: 0228.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.47s
+2025-06-30 21:27:13,346 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹1:  30%|███       | 3/10 [00:01<00:03,  2.12it/s]2025-06-30 21:27:13,822 - INFO - 视频处理完成: 0386.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.47s
+2025-06-30 21:27:13,822 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹1:  40%|████      | 4/10 [00:01<00:02,  2.11it/s]2025-06-30 21:27:14,333 - INFO - 视频处理完成: 2031.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.51s
+2025-06-30 21:27:14,334 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹1:  50%|█████     | 5/10 [00:02<00:02,  2.05it/s]2025-06-30 21:27:14,785 - INFO - 视频处理完成: 1168.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.45s
+2025-06-30 21:27:14,786 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹1:  60%|██████    | 6/10 [00:02<00:01,  2.11it/s]2025-06-30 21:27:15,224 - INFO - 视频处理完成: 0246.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.44s
+2025-06-30 21:27:15,225 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹1:  70%|███████   | 7/10 [00:03<00:01,  2.16it/s]2025-06-30 21:27:15,694 - INFO - 视频处理完成: 1028.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.47s
+2025-06-30 21:27:15,695 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹1:  80%|████████  | 8/10 [00:03<00:00,  2.15it/s]2025-06-30 21:27:16,145 - INFO - 视频处理完成: 0106.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.45s
+2025-06-30 21:27:16,145 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹1:  90%|█████████ | 9/10 [00:04<00:00,  2.17it/s]2025-06-30 21:27:16,579 - INFO - 视频处理完成: 1186.mp4 - 总帧数: 16 - 采样帧数: 16 - 耗时: 0.43s
+2025-06-30 21:27:16,579 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+2025-06-30 21:27:16,579 - INFO - 已处理文件夹1中 10/10 个视频
+处理文件夹1: 100%|██████████| 10/10 [00:04<00:00,  2.21it/s]处理文件夹1: 100%|██████████| 10/10 [00:04<00:00,  2.14it/s]
+2025-06-30 21:27:16,580 - INFO - 开始处理文件夹2: 10个视频
+处理文件夹2:   0%|          | 0/10 [00:00<?, ?it/s]2025-06-30 21:27:17,211 - INFO - 视频处理完成: Zh54aq6BiBY_1_u1ggiYDc_JA_0.mp4 - 总帧数: 645 - 采样帧数: 16 - 耗时: 0.63s
+2025-06-30 21:27:17,212 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹2:  10%|█         | 1/10 [00:00<00:05,  1.58it/s]2025-06-30 21:27:18,039 - INFO - 视频处理完成: bNaSzFKBUrU_0_093EdKDP7Zs_5.mp4 - 总帧数: 334 - 采样帧数: 16 - 耗时: 0.83s
+2025-06-30 21:27:18,039 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹2:  20%|██        | 2/10 [00:01<00:05,  1.34it/s]2025-06-30 21:27:18,595 - INFO - 视频处理完成: 2VcewGxmq9U_0_lBZ3BR1tbfo_3.mp4 - 总帧数: 349 - 采样帧数: 16 - 耗时: 0.56s
+2025-06-30 21:27:18,595 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹2:  30%|███       | 3/10 [00:02<00:04,  1.52it/s]2025-06-30 21:27:18,994 - INFO - 视频处理完成: sTc6Dp4tCAo_4_y0eQ6TPsPY8_1.mp4 - 总帧数: 397 - 采样帧数: 16 - 耗时: 0.40s
+2025-06-30 21:27:18,994 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹2:  40%|████      | 4/10 [00:02<00:03,  1.80it/s]2025-06-30 21:27:19,381 - INFO - 视频处理完成: q3TBk7wt6zM_5_qs9B5S_Q36w_0.mp4 - 总帧数: 308 - 采样帧数: 16 - 耗时: 0.39s
+2025-06-30 21:27:19,381 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹2:  50%|█████     | 5/10 [00:02<00:02,  2.02it/s]2025-06-30 21:27:19,933 - INFO - 视频处理完成: EdIjwvd-XYw_6_8HJLN_J8KVE_0.mp4 - 总帧数: 308 - 采样帧数: 16 - 耗时: 0.55s
+2025-06-30 21:27:19,933 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹2:  60%|██████    | 6/10 [00:03<00:02,  1.94it/s]2025-06-30 21:27:20,406 - INFO - 视频处理完成: L6zdY9Kd6jM_0_nmfPtUu2nSM_0.mp4 - 总帧数: 515 - 采样帧数: 16 - 耗时: 0.47s
+2025-06-30 21:27:20,406 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹2:  70%|███████   | 7/10 [00:03<00:01,  2.00it/s]2025-06-30 21:27:21,132 - INFO - 视频处理完成: yvf0HOswcPk_1_uyag4mBCzMM_0.mp4 - 总帧数: 459 - 采样帧数: 16 - 耗时: 0.73s
+2025-06-30 21:27:21,133 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹2:  80%|████████  | 8/10 [00:04<00:01,  1.75it/s]2025-06-30 21:27:21,963 - INFO - 视频处理完成: RmWHKqjG_vQ_2_PhsRrmq1YRI_0.mp4 - 总帧数: 725 - 采样帧数: 16 - 耗时: 0.83s
+2025-06-30 21:27:21,964 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+处理文件夹2:  90%|█████████ | 9/10 [00:05<00:00,  1.53it/s]2025-06-30 21:27:22,419 - INFO - 视频处理完成: Ode_G72nKUQ_4_xhyyVne3VhI_4.mp4 - 总帧数: 553 - 采样帧数: 16 - 耗时: 0.45s
+2025-06-30 21:27:22,419 - INFO - 提取帧形状: torch.Size([3, 16, 256, 256])
+2025-06-30 21:27:22,420 - INFO - 已处理文件夹2中 10/10 个视频
+处理文件夹2: 100%|██████████| 10/10 [00:05<00:00,  1.69it/s]处理文件夹2: 100%|██████████| 10/10 [00:05<00:00,  1.71it/s]
+2025-06-30 21:27:22,461 - INFO - 文件夹1视频张量形状: torch.Size([10, 3, 16, 256, 256])
+2025-06-30 21:27:22,462 - INFO - 文件夹2视频张量形状: torch.Size([10, 3, 16, 256, 256])
+2025-06-30 21:27:22,462 - INFO - 预处理文件夹1的视频...
+2025-06-30 21:27:22,623 - INFO - 预处理文件夹2的视频...
+2025-06-30 21:27:22,756 - INFO - 提取文件夹1的特征...
+2025-06-30 21:27:24,713 - ERROR - 特征提取失败: The following operation failed in the TorchScript interpreter.
+Traceback of TorchScript, serialized code (most recent call last):
+  File "code/__torch__/src/i3dpt_jit.py", line 62, in forward
+    out13 = (self.mixed_5b).forward(out12, )
+    out14 = (self.mixed_5c).forward(out13, )
+    out15 = (self.avg_pool).forward(out14, )
+             ~~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+    out16 = (self.dropout).forward(out15, )
+    out17 = (self.conv3d_0c_1x1).forward(out16, )
+  File "code/__torch__/torch/nn/modules/pooling.py", line 28, in forward
+  def forward(self: __torch__.torch.nn.modules.pooling.AvgPool3d,
+    input: Tensor) -> Tensor:
+    _2 = torch.avg_pool3d(input, [2, 7, 7], [1, 1, 1], [0, 0, 0], False, True, None)
+         ~~~~~~~~~~~~~~~~ <--- HERE
+    return _2
+
+Traceback of TorchScript, original code (most recent call last):
+  File "/home/skoroki/video-sg/env/lib/python3.8/site-packages/torch/nn/modules/pooling.py", line 675, in forward
+    def forward(self, input: Tensor) -> Tensor:
+        return F.avg_pool3d(input, self.kernel_size, self.stride,
+               ~~~~~~~~~~~~ <--- HERE
+                            self.padding, self.ceil_mode, self.count_include_pad, self.divisor_override)
+RuntimeError: input image (T: 448 H: 1 W: 7) smaller than kernel size (kT: 2 kH: 7 kW: 7)
+
+2025-06-30 21:27:24,839 - ERROR - 特征提取失败: The following operation failed in the TorchScript interpreter.
+Traceback of TorchScript, serialized code (most recent call last):
+  File "code/__torch__/src/i3dpt_jit.py", line 62, in forward
+    out13 = (self.mixed_5b).forward(out12, )
+    out14 = (self.mixed_5c).forward(out13, )
+    out15 = (self.avg_pool).forward(out14, )
+             ~~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+    out16 = (self.dropout).forward(out15, )
+    out17 = (self.conv3d_0c_1x1).forward(out16, )
+  File "code/__torch__/torch/nn/modules/pooling.py", line 28, in forward
+  def forward(self: __torch__.torch.nn.modules.pooling.AvgPool3d,
+    input: Tensor) -> Tensor:
+    _2 = torch.avg_pool3d(input, [2, 7, 7], [1, 1, 1], [0, 0, 0], False, True, None)
+         ~~~~~~~~~~~~~~~~ <--- HERE
+    return _2
+
+Traceback of TorchScript, original code (most recent call last):
+  File "/home/skoroki/video-sg/env/lib/python3.8/site-packages/torch/nn/modules/pooling.py", line 675, in forward
+    def forward(self, input: Tensor) -> Tensor:
+        return F.avg_pool3d(input, self.kernel_size, self.stride,
+               ~~~~~~~~~~~~ <--- HERE
+                            self.padding, self.ceil_mode, self.count_include_pad, self.divisor_override)
+RuntimeError: input image (T: 448 H: 1 W: 7) smaller than kernel size (kT: 2 kH: 7 kW: 7)
+
+2025-06-30 21:27:25,274 - ERROR - 特征提取失败: The following operation failed in the TorchScript interpreter.
+Traceback of TorchScript, serialized code (most recent call last):
+  File "code/__torch__/src/i3dpt_jit.py", line 62, in forward
+    out13 = (self.mixed_5b).forward(out12, )
+    out14 = (self.mixed_5c).forward(out13, )
+    out15 = (self.avg_pool).forward(out14, )
+             ~~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+    out16 = (self.dropout).forward(out15, )
+    out17 = (self.conv3d_0c_1x1).forward(out16, )
+  File "code/__torch__/torch/nn/modules/pooling.py", line 28, in forward
+  def forward(self: __torch__.torch.nn.modules.pooling.AvgPool3d,
+    input: Tensor) -> Tensor:
+    _2 = torch.avg_pool3d(input, [2, 7, 7], [1, 1, 1], [0, 0, 0], False, True, None)
+         ~~~~~~~~~~~~~~~~ <--- HERE
+    return _2
+
+Traceback of TorchScript, original code (most recent call last):
+  File "/home/skoroki/video-sg/env/lib/python3.8/site-packages/torch/nn/modules/pooling.py", line 675, in forward
+    def forward(self, input: Tensor) -> Tensor:
+        return F.avg_pool3d(input, self.kernel_size, self.stride,
+               ~~~~~~~~~~~~ <--- HERE
+                            self.padding, self.ceil_mode, self.count_include_pad, self.divisor_override)
+RuntimeError: input image (T: 448 H: 1 W: 7) smaller than kernel size (kT: 2 kH: 7 kW: 7)
+
+2025-06-30 21:27:25,283 - INFO - 提取文件夹2的特征...
+2025-06-30 21:27:25,418 - ERROR - 特征提取失败: The following operation failed in the TorchScript interpreter.
+Traceback of TorchScript, serialized code (most recent call last):
+  File "code/__torch__/src/i3dpt_jit.py", line 62, in forward
+    out13 = (self.mixed_5b).forward(out12, )
+    out14 = (self.mixed_5c).forward(out13, )
+    out15 = (self.avg_pool).forward(out14, )
+             ~~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+    out16 = (self.dropout).forward(out15, )
+    out17 = (self.conv3d_0c_1x1).forward(out16, )
+  File "code/__torch__/torch/nn/modules/pooling.py", line 28, in forward
+  def forward(self: __torch__.torch.nn.modules.pooling.AvgPool3d,
+    input: Tensor) -> Tensor:
+    _2 = torch.avg_pool3d(input, [2, 7, 7], [1, 1, 1], [0, 0, 0], False, True, None)
+         ~~~~~~~~~~~~~~~~ <--- HERE
+    return _2
+
+Traceback of TorchScript, original code (most recent call last):
+  File "/home/skoroki/video-sg/env/lib/python3.8/site-packages/torch/nn/modules/pooling.py", line 675, in forward
+    def forward(self, input: Tensor) -> Tensor:
+        return F.avg_pool3d(input, self.kernel_size, self.stride,
+               ~~~~~~~~~~~~ <--- HERE
+                            self.padding, self.ceil_mode, self.count_include_pad, self.divisor_override)
+RuntimeError: input image (T: 448 H: 1 W: 7) smaller than kernel size (kT: 2 kH: 7 kW: 7)
+
+2025-06-30 21:27:25,633 - ERROR - 特征提取失败: The following operation failed in the TorchScript interpreter.
+Traceback of TorchScript, serialized code (most recent call last):
+  File "code/__torch__/src/i3dpt_jit.py", line 62, in forward
+    out13 = (self.mixed_5b).forward(out12, )
+    out14 = (self.mixed_5c).forward(out13, )
+    out15 = (self.avg_pool).forward(out14, )
+             ~~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+    out16 = (self.dropout).forward(out15, )
+    out17 = (self.conv3d_0c_1x1).forward(out16, )
+  File "code/__torch__/torch/nn/modules/pooling.py", line 28, in forward
+  def forward(self: __torch__.torch.nn.modules.pooling.AvgPool3d,
+    input: Tensor) -> Tensor:
+    _2 = torch.avg_pool3d(input, [2, 7, 7], [1, 1, 1], [0, 0, 0], False, True, None)
+         ~~~~~~~~~~~~~~~~ <--- HERE
+    return _2
+
+Traceback of TorchScript, original code (most recent call last):
+  File "/home/skoroki/video-sg/env/lib/python3.8/site-packages/torch/nn/modules/pooling.py", line 675, in forward
+    def forward(self, input: Tensor) -> Tensor:
+        return F.avg_pool3d(input, self.kernel_size, self.stride,
+               ~~~~~~~~~~~~ <--- HERE
+                            self.padding, self.ceil_mode, self.count_include_pad, self.divisor_override)
+RuntimeError: input image (T: 448 H: 1 W: 7) smaller than kernel size (kT: 2 kH: 7 kW: 7)
+
+2025-06-30 21:27:25,823 - ERROR - 特征提取失败: The following operation failed in the TorchScript interpreter.
+Traceback of TorchScript, serialized code (most recent call last):
+  File "code/__torch__/src/i3dpt_jit.py", line 62, in forward
+    out13 = (self.mixed_5b).forward(out12, )
+    out14 = (self.mixed_5c).forward(out13, )
+    out15 = (self.avg_pool).forward(out14, )
+             ~~~~~~~~~~~~~~~~~~~~~~ <--- HERE
+    out16 = (self.dropout).forward(out15, )
+    out17 = (self.conv3d_0c_1x1).forward(out16, )
+  File "code/__torch__/torch/nn/modules/pooling.py", line 28, in forward
+  def forward(self: __torch__.torch.nn.modules.pooling.AvgPool3d,
+    input: Tensor) -> Tensor:
+    _2 = torch.avg_pool3d(input, [2, 7, 7], [1, 1, 1], [0, 0, 0], False, True, None)
+         ~~~~~~~~~~~~~~~~ <--- HERE
+    return _2
+
+Traceback of TorchScript, original code (most recent call last):
+  File "/home/skoroki/video-sg/env/lib/python3.8/site-packages/torch/nn/modules/pooling.py", line 675, in forward
+    def forward(self, input: Tensor) -> Tensor:
+        return F.avg_pool3d(input, self.kernel_size, self.stride,
+               ~~~~~~~~~~~~ <--- HERE
+                            self.padding, self.ceil_mode, self.count_include_pad, self.divisor_override)
+RuntimeError: input image (T: 448 H: 1 W: 7) smaller than kernel size (kT: 2 kH: 7 kW: 7)
+
+2025-06-30 21:27:25,827 - INFO - 文件夹1特征统计: 10个样本, 特征维度: 1024
+2025-06-30 21:27:25,827 - INFO - 特征值范围: [0.0000, 0.0000], 标准差: 0.0000, 平均幅度: 0.0000
+2025-06-30 21:27:25,827 - INFO - 文件夹2特征统计: 10个样本, 特征维度: 1024
+2025-06-30 21:27:25,827 - INFO - 特征值范围: [0.0000, 0.0000], 标准差: 0.0000, 平均幅度: 0.0000
+2025-06-30 21:27:25,827 - WARNING - 特征值幅度过低，可能是归一化过度
+2025-06-30 21:27:25,827 - INFO - 计算Fréchet视频距离...
+2025-06-30 21:27:26,012 - INFO - 计算完成: FVD = 0.0000
+2025-06-30 21:27:26,012 - INFO - 总处理时间: 15.30秒
+2025-06-30 21:27:26,014 - INFO - 结果已保存到: fvd_results_20250630_212710.json
+2025-06-30 21:27:26,060 - INFO - 最终FVD: 0.0000 - 视频内容几乎完全相同（可能计算有误）

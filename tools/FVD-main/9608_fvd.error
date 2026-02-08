@@ -1,0 +1,7 @@
+loading real videos: 0it [00:00, ?it/s]loading real videos: 0it [00:00, ?it/s]
+Traceback (most recent call last):
+  File "/public/home/xdu23171214541/dits/Latte/tools/FVD-main/fvd_test.py", line 18, in <module>
+    score_videogpt = fvd_videogpt.calculate_fvd_by_video_path(videos_list1, videos_list2)
+  File "/public/home/xdu23171214541/dits/Latte/tools/FVD-main/fvdcal/fvd_distance.py", line 43, in calculate_fvd_by_video_path
+    real_videos = torch.stack(real_videos)
+RuntimeError: stack expects a non-empty TensorList

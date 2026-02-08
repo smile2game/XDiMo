@@ -1,0 +1,29 @@
+主节点: gpu14
+每个节点的GPU数量: 8
+
+Sender: Unischeduler System <xdu23171214541@login01>
+Subject: Job 9608: </public/home/xdu23171214541/.jhjobs/1750870787.9608.1.shell> Exited
+
+Job </public/home/xdu23171214541/.jhjobs/1750870787.9608.1.shell> was submitted from host <login01> by user <xdu23171214541>.
+Job was executed on host(s) <64*gpu14>, in queue <gpu_6000ada>, as user <xdu23171214541>.
+</public/home/xdu23171214541> was used as the home directory.
+</public/home/xdu23171214541/dits/Latte/tools/FVD-main> was used as the working directory.
+Started at 2025-06-26 00:59:47
+Results reported at 2025-06-26 00:59:56
+
+Your job looked like:
+
+------------------------------------------------------------
+# User input
+/public/home/xdu23171214541/.jhjobs/1750870787.9608.1.shell
+------------------------------------------------------------
+
+Exited with exit code 1.
+
+Resource usage summary:
+
+		CPU time:       0.16 sec.
+		Max Memory:     7.7 MB
+		Max Processes:  2
+
+

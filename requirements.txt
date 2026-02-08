@@ -1,0 +1,16 @@
+
+timm
+diffusers[torch]==0.24.0
+accelerate
+tensorboard
+einops
+transformers
+av
+scikit-image
+decord
+pandas
+imageio-ffmpeg
+sentencepiece
+beautifulsoup4
+ftfy
+omegaconf
