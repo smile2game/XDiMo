@@ -1,5 +1,6 @@
 #!/bin/bash
 # 4卡 H200 MFU优化 (bs=4) | 提交: cd XDiMo && jsub < scripts/4gpu/h200/bs4.sh
+# 卡数由 -gpgpu 决定；-n = 卡数*8（CPU核数），过高会导致 CPU 资源不足无法启动
 #JSUB -J xdimo-h200-4gpu-bs4
 #JSUB -q gpu_h200
 #JSUB -n 32
