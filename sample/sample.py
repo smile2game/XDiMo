@@ -9,7 +9,7 @@ Sample new images from a pre-trained Latte.
 import os
 import sys
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_src = os.path.join(_root, "src")
+_src = os.path.join(_root, "xdimo")
 if _src not in sys.path:
     sys.path.insert(0, _src)
 
@@ -64,10 +64,11 @@ def main(args):
     print(f"模型加载没问题,model is {model}")
     model.eval()  # important!
     diffusion = create_diffusion(str(args.num_sampling_steps))
-    # vae = AutoencoderKL.from_pretrained(f"stabilityai/sd-vae-ft-{args.vae}").to(device)
-    # vae = AutoencoderKL.from_pretrained(args.pretrained_model_path, subfolder="vae").to(device)
-    print(f"加载vae，开始报错!:")
-    vae = AutoencoderKL.from_pretrained("/home/xdhpc/dits/Latte/share_ckpts/sd-vae-ft-ema").to(device)
+    _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    vae_path = getattr(args, 'pretrained_model_path', None) or os.path.join(_root, "share_ckpts")
+    if vae_path and not os.path.isabs(vae_path):
+        vae_path = os.path.normpath(os.path.join(_root, vae_path))
+    vae = AutoencoderKL.from_pretrained(vae_path, subfolder="vae").to(device)
     # text_encoder = TextEmbedder().to(device)
 
     if args.use_fp16:

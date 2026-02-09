@@ -48,8 +48,38 @@ import numpy as np
 from transformers import T5EncoderModel, T5Tokenizer
 
 #################################################################################
-#                                  Training Loop                                #
+#                                  MFU 测算                                     #
 #################################################################################
+
+# 超算队列 GPU -> FP16 峰值 TFLOPS（gpu_6000ada / gpu_4090 / gpu_h100 / gpu_pro6000）
+# 运行时根据 torch.cuda.get_device_name() 自主检测，改 -q 即可
+_GPU_PEAK_TFLOPS_FP16 = [
+    ("H100", 989), ("H200", 989),
+    ("RTX PRO 6000", 200), ("PRO 6000", 200), ("PRO6000", 200),
+    ("RTX 6000 ADA", 91.1), ("6000 ADA", 91.1),
+    ("RTX 4090", 82.6),
+]
+
+
+def get_peak_tflops_fp16(device):
+    """根据 GPU 型号返回 FP16 峰值 TFLOPS，支持三队列自主检测。"""
+    try:
+        name = (torch.cuda.get_device_name(device) or "").upper()
+        for keyword, tflops in _GPU_PEAK_TFLOPS_FP16:
+            if keyword in name:
+                return tflops
+    except Exception:
+        pass
+    return 82.6  # 未知 GPU 保守估计（按 4090）
+
+def estimate_latte_flops_per_forward(num_frames, latent_size, hidden_size=384, num_layers=12):
+    """Latte 单样本单次前向的 FLOPs 估计（Transformer: attention + MLP）。"""
+    n = num_frames * (latent_size ** 2)
+    d = hidden_size
+    # 每层: attention 4nd^2 + 2n^2d, MLP ~8nd^2
+    flops_per_layer = (4 * n * d * d + 2 * n * n * d) + 8 * n * d * d
+    return num_layers * flops_per_layer
+
 
 def main(args):
     # 将相对路径转为基于仓库根目录的绝对路径，便于在任意 cwd 下运行
@@ -144,7 +174,26 @@ def main(args):
     # 模型存在部分参数未参与 loss 的情况（如 dropout/条件分支），必须设为 True 否则 DDP 会报错
     model = DDP(model.to(device), device_ids=[local_rank], find_unused_parameters=True)
 
-    logger.info(f"Model Parameters: {sum(p.numel() for p in model.parameters()):,}")
+    num_params = sum(p.numel() for p in model.parameters())
+    logger.info(f"Model Parameters: {num_params:,}")
+    # MFU 测算：单样本前向 FLOPs、单卡峰值 TFLOPS
+    flops_forward = estimate_latte_flops_per_forward(args.num_frames, args.latent_size)
+    peak_tflops = get_peak_tflops_fp16(device)
+    world_size = dist.get_world_size()
+    global_batch = args.local_batch_size * world_size
+    flops_per_step = 3.0 * flops_forward * global_batch  # 前向+反向约 3x 前向
+    if rank == 0:
+        try:
+            gpu_name = torch.cuda.get_device_name(device)
+        except Exception:
+            gpu_name = "unknown"
+        logger.info("---------- Compute & MFU ----------")
+        logger.info(f"  Parameters:        {num_params:,} ({num_params/1e6:.2f}M)")
+        logger.info(f"  FLOPs/sample(fwd): {flops_forward/1e12:.4f} TFLOPs ({flops_forward/1e15:.4f} PFLOPs)")
+        logger.info(f"  FLOPs/step(3×fwd×B): {flops_per_step/1e12:.4f} TFLOPs (global_batch={global_batch})")
+        logger.info(f"  GPU:              {gpu_name} (peak FP16: {peak_tflops} TFLOPs/GPU)")
+        logger.info(f"  MFU formula:      achieved_TFLOPs / (world_size × peak_TFLOPs), achieved = FLOPs/step × steps_per_sec")
+        logger.info("-----------------------------------")
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=0)
 
     # Freeze vae and text_encoder
@@ -280,10 +329,15 @@ def main(args):
                 avg_loss = torch.tensor(running_loss / log_steps, device=device)
                 dist.all_reduce(avg_loss, op=dist.ReduceOp.SUM)
                 avg_loss = avg_loss.item() / dist.get_world_size()
-                # logger.info(f"(step={train_steps:07d}) Train Loss: {avg_loss:.4f}, Train Steps/Sec: {steps_per_sec:.2f}")
-                logger.info(f"(step={train_steps:07d}/epoch={epoch:04d}) Train Loss: {avg_loss:.4f}, Gradient Norm: {gradient_norm:.4f}, Train Steps/Sec: {steps_per_sec:.2f}")
+                achieved_tflops = flops_per_step * steps_per_sec / 1e12
+                mfu = min(achieved_tflops / (world_size * peak_tflops), 1.0)  # 防止峰值估计偏小导致 >100%
+                logger.info(
+                    f"(step={train_steps:07d}/epoch={epoch:04d}) Loss: {avg_loss:.4f} | GradNorm: {gradient_norm:.4f} | "
+                    f"Steps/Sec: {steps_per_sec:.2f} | Achieved: {achieved_tflops:.2f} TFLOPs/s | MFU: {mfu*100:.2f}%"
+                )
                 write_tensorboard(tb_writer, 'Train Loss', avg_loss, train_steps)
                 write_tensorboard(tb_writer, 'Gradient Norm', gradient_norm, train_steps)
+                write_tensorboard(tb_writer, 'MFU', mfu, train_steps)
                 # wandb 记录（已注释）
                 # if rank == 0:
                 #     wandb.log({"Train Loss": avg_loss, "Gradient Norm": gradient_norm, "Train Steps/Sec": steps_per_sec}, step=train_steps)
@@ -307,6 +361,14 @@ def main(args):
                     logger.info(f"Saved checkpoint to {checkpoint_path}")
                     # wandb.save(checkpoint_path)  # 已注释
                 dist.barrier()
+
+            # 达到最大步数即结束训练
+            if train_steps >= args.max_train_steps:
+                if rank == 0:
+                    logger.info(f"Reached max_train_steps={args.max_train_steps}, stopping.")
+                break
+        if train_steps >= args.max_train_steps:
+            break
 
     model.eval()  # important! This disables randomized embedding dropout
     # do any sampling/FID calculation/etc. with ema (or model) in eval mode ...

@@ -1,16 +1,9 @@
-# dataset（训练数据）
-# 超算路径：/public/home/liuhuijie/dits/dataset/preprocess_ffs/train/videos
+# 4GPU 对比实验 - MFU优化 bs=4 (H200 80GB)
 dataset: "ffs"
 data_path: "/public/home/liuhuijie/dits/dataset/preprocess_ffs/train/videos"
-
-# 共享权重：VAE 放在仓库 share_ckpts/ 下（相对路径会在 train.py 中解析为 XDiMo 下的绝对路径）
 pretrained_model_path: "./share_ckpts"
-
-# save and load（日志与实验目录在 output/，训练权重在 checkpoints/）
 results_dir: "./output"
 pretrained: null
-
-# model config: 最小模型 Latte-S/2
 model: Latte-S/2
 num_frames: 16
 image_size: 256
@@ -23,14 +16,12 @@ extras: 1
 num_experts: 2
 top_k: 1
 expert_capacity_factor: 1.0
-
-# train config
 save_ceph: True
 learning_rate: 1e-4
 ckpt_every: 5000
 clip_max_norm: 0.1
 start_clip_iter: 20000
-local_batch_size: 1
+local_batch_size: 4
 max_train_steps: 1000000
 global_seed: 3407
 num_workers: 8
@@ -39,8 +30,6 @@ lr_warmup_steps: 0
 resume_from_checkpoint:
 gradient_accumulation_steps: 1
 num_classes:
-
-# low VRAM (2080Ti)
 use_compile: False
 mixed_precision: True
 enable_xformers_memory_efficient_attention: False

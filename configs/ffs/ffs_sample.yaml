@@ -1,24 +1,24 @@
-# path:
-ckpt: # will be overwrite
+# path（与训练配置一致）
+ckpt: # 命令行覆盖，如 --ckpt ./output/xxx/checkpoints/0050000.pt
 save_img_path: "./output/samples"
-pretrained_model_path: "./ckpts/shared/sd-vae-ft-ema"
+pretrained_model_path: "./share_ckpts"
 
-# model config: 
-model: Latte-L/2-MoE
+# model config（须与训练时一致）
+model: Latte-S/2
 num_frames: 16
-image_size: 256 # choices=[256, 512]
-frame_interval: 2
+image_size: 256
+frame_interval: 3
 fixed_spatial: False
 attention_bias: True
 learn_sigma: True
-extras: 1 # [1, 2] 1 unconditional generation, 2 class-conditional generation
+extras: 1
 num_classes:
 
 # model speedup
 use_compile: False
 use_fp16: True
 
-# sample config:
+# sample config
 seed:
 sample_method: 'ddpm'
 num_sampling_steps: 250

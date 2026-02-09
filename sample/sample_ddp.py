@@ -15,7 +15,7 @@ import os
 import sys
 import torch
 _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_src = os.path.join(_root, "src")
+_src = os.path.join(_root, "xdimo")
 if _src not in sys.path:
     sys.path.insert(0, _src)
 import torch.distributed as dist
@@ -88,10 +88,10 @@ def main(args):
     model.eval()  # important!
     diffusion = create_diffusion(str(args.num_sampling_steps))
     _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    vae_path = getattr(args, 'pretrained_model_path', None) or os.path.join(_root, "ckpts", "shared", "sd-vae-ft-ema")
+    vae_path = getattr(args, 'pretrained_model_path', None) or os.path.join(_root, "share_ckpts")
     if not os.path.isabs(vae_path):
         vae_path = os.path.normpath(os.path.join(_root, vae_path))
-    vae = AutoencoderKL.from_pretrained(vae_path).to(device)
+    vae = AutoencoderKL.from_pretrained(vae_path, subfolder="vae").to(device)
     
     if args.use_fp16:
         print('WARNING: using half percision for inferencing!')

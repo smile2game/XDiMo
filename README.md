@@ -1,182 +1,129 @@
-## Latte: Latent Diffusion Transformer for Video Generation<br><sub>Official PyTorch Implementation</sub>
+# XDiMo
 
-<!-- ### [Paper](https://arxiv.org/abs/2401.03048v1) | [Project Page](https://maxin-cn.github.io/latte_project/) -->
+基于 [Latte](https://github.com/Vchitect/Latte) 整理的视频生成训练与评测仓库，适配本地双卡（如 2×2080Ti）与超算 Slurm 环境。
 
-<!-- [![arXiv](https://img.shields.io/badge/arXiv-2401.03048-b31b1b.svg)](https://arxiv.org/abs/2401.03048) -->
-[![arXiv](https://img.shields.io/badge/arXiv-2401.03048-b31b1b.svg)](https://arxiv.org/abs/2401.03048)
-[![Project Page](https://img.shields.io/badge/Project-Website-blue)](https://maxin-cn.github.io/latte_project/)
-[![HF Demo](https://img.shields.io/static/v1?label=Demo&message=OpenBayes%E8%B4%9D%E5%BC%8F%E8%AE%A1%E7%AE%97&color=green)](https://openbayes.com/console/public/tutorials/UOeU0ywVxl7) 
-[![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-yellow)](https://huggingface.co/spaces/maxin-cn/Latte-1)
-[![slack badge](https://img.shields.io/badge/Discord-join-blueviolet?logo=discord&amp)](https://discord.gg/RguYqhVU92)
+- **训练**：DDP 多卡、混合精度、梯度检查点，支持 FFS 等数据集。
+- **采样**：单卡 / DDP 生成视频，可导出 .npz 用于 FVD。
+- **评测**：FVD 等指标，见 `tools/` 与 [docs/datasets_evaluation.md](docs/datasets_evaluation.md)。
 
-[![Static Badge](https://img.shields.io/badge/Latte--1%20checkpoint%20(T2V)-HuggingFace-yellow?logoColor=violet%20Latte-1%20checkpoint)](https://huggingface.co/maxin-cn/Latte-1)
-[![Static Badge](https://img.shields.io/badge/Latte%20checkpoint%20-HuggingFace-yellow?logoColor=violet%20Latte%20checkpoint)](https://huggingface.co/spaces/maxin-cn/Latte-1)
+---
 
-This repo contains the PyTorch model definitions, pre-trained weights, and training/sampling/evaluation codes for our paper 
-Latte: Latent Diffusion Transformer for Video Generation. 
-
-> [**Latte: Latent Diffusion Transformer for Video Generation**](https://maxin-cn.github.io/latte_project/)<br>
-> [Xin Ma](https://maxin-cn.github.io/), [Yaohui Wang*](https://wyhsirius.github.io/), [Xinyuan Chen](https://scholar.google.com/citations?user=3fWSC8YAAAAJ), [Gengyun Jia](https://scholar.google.com/citations?user=_04pkGgAAAAJ&hl=zh-CN), [Ziwei Liu](https://liuziwei7.github.io/), [Yuan-Fang Li](https://users.monash.edu/~yli/), [Cunjian Chen](https://cunjian.github.io/), [Yu Qiao](https://scholar.google.com.hk/citations?user=gFtI-8QAAAAJ&hl=zh-CN)
-> (*Corresponding Author & Project Lead)
-<!-- > <br>Monash University, Shanghai Artificial Intelligence Laboratory,<br> NJUPT, S-Lab, Nanyang Technological University 
-
-We propose a novel Latent Diffusion Transformer, namely Latte, for video generation. Latte first extracts spatio-temporal tokens from input videos and then adopts a series of Transformer blocks to model video distribution in the latent space. In order to model a substantial number of tokens extracted from videos, four efficient variants are introduced from the perspective of decomposing the spatial and temporal dimensions of input videos. To improve the quality of generated videos, we determine the best practices of Latte through rigorous experimental analysis, including video clip patch embedding, model variants, timestep-class information injection, temporal positional embedding, and learning strategies. Our comprehensive evaluation demonstrates that Latte achieves state-of-the-art performance across four standard video generation datasets, i.e., FaceForensics, SkyTimelapse, UCF101, and Taichi-HD. In addition, we extend Latte to text-to-video generation (T2V) task, where Latte achieves comparable results compared to recent T2V models. We strongly believe that Latte provides valuable insights for future research on incorporating Transformers into diffusion models for video generation.
-
- ![The architecture of Latte](visuals/architecture.svg){width=20}
- -->
-
-<!--
-<div align="center">
-    <img src="visuals/architecture.svg" width="650">
-</div>
-
-This repository contains:
-
-* 🪐 A simple PyTorch [implementation](models/latte.py) of Latte
-* ⚡️ **Pre-trained Latte models** trained on FaceForensics, SkyTimelapse, Taichi-HD and UCF101 (256x256). In addition, we provide a T2V checkpoint (512x512). All checkpoints can be found [here](https://huggingface.co/maxin-cn/Latte/tree/main). 
-
-* 🛸 A Latte [training script](train.py) using PyTorch DDP.
--->
-
-<video controls loop src="https://github.com/Vchitect/Latte/assets/7929326/a650cd84-2378-4303-822b-56a441e1733b" type="video/mp4"></video>
-
-## News
-- 🔥 **Mar 23, 2025** 💥 Latte is accepted by Transactions on Machine Learning Research (TMLR) 2025.
-
-- 🔥 **Jul 11, 2024** 💥 **Latte-1 is now integrated into [diffusers](https://huggingface.co/docs/diffusers/main/en/api/pipelines/latte). Thanks to [@yiyixuxu](https://github.com/yiyixuxu), [@sayakpaul](https://github.com/sayakpaul), [@a-r-r-o-w](https://github.com/a-r-r-o-w) and [@DN6](https://github.com/DN6).** You can easily run Latte using the following code. We also support inference with 4/8-bit quantization, which can reduce GPU memory from 17 GB to 9 GB. Please refer to this [tutorial](docs/latte_diffusers.md) for more information.
+## 文件结构
 
 ```
-# Please update the version of diffusers at leaset to 0.30.0
-from diffusers import LattePipeline
-from diffusers.models import AutoencoderKLTemporalDecoder
-from torchvision.utils import save_image
-import torch
-import imageio
-
-torch.manual_seed(0)
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-video_length = 16 # 1 (text-to-image) or 16 (text-to-video)
-pipe = LattePipeline.from_pretrained("maxin-cn/Latte-1", torch_dtype=torch.float16).to(device)
-
-# Using temporal decoder of VAE
-vae = AutoencoderKLTemporalDecoder.from_pretrained("maxin-cn/Latte-1", subfolder="vae_temporal_decoder", torch_dtype=torch.float16).to(device)
-pipe.vae = vae
-
-prompt = "a cat wearing sunglasses and working as a lifeguard at pool."
-videos = pipe(prompt, video_length=video_length, output_type='pt').frames.cpu()
+XDiMo/
+├── configs/ffs/          # FFS 训练/采样配置
+├── docs/                 # 文档（STRUCTURE、数据集与评测、diffusers 等）
+├── sample/               # 采样脚本（sample_ddp.py 等）
+├── scripts/              # 训练/采样/slurm 脚本
+├── share_ckpts/          # 共享权重（VAE，需自行下载）
+├── xdimo/                # 模型、数据集、扩散、工具
+├── tools/                # FVD 等评测
+├── train.py              # 训练入口
+├── local_train.sh        # 双卡 2080Ti 训练
+└── fvd.py                # FVD 评测
 ```
 
-- 🔥 **Jun 26, 2024** 💥 Latte is supported by [VideoSys](https://github.com/NUS-HPC-AI-Lab/VideoSys), which is a user-friendly, high-performance infrastructure for video generation.
+详见 [docs/STRUCTURE.md](docs/STRUCTURE.md)。
 
-- 🔥 **May 23, 2024** 💥 **Latte-1** is released! Pre-trained model can be downloaded [here](https://huggingface.co/maxin-cn/Latte-1/tree/main/transformer). **We support both T2V and T2I**. Please run `bash sample/t2v.sh` and `bash sample/t2i.sh` respectively.
+---
 
-<!--
-<div align="center">
-    <img src="visuals/latteT2V.gif" width=88%>
-</div>
--->
-
-- 🔥 **Feb 24, 2024** 💥 We are very grateful that researchers and developers like our work. We will continue to update our LatteT2V model, hoping that our efforts can help the community develop. Our Latte discord channel <a href="https://discord.gg/RguYqhVU92" style="text-decoration:none;">
-<img src="https://user-images.githubusercontent.com/25839884/218347213-c080267f-cbb6-443e-8532-8e1ed9a58ea9.png" width="3%" alt="" /></a> is created for discussions. Coders are welcome to contribute.
-
-- 🔥 **Jan 9, 2024** 💥 An updated LatteT2V model initialized with the [PixArt-α](https://github.com/PixArt-alpha/PixArt-alpha) is released, the checkpoint can be found [here](https://huggingface.co/maxin-cn/Latte-0/tree/main/transformer).
-
-- 🔥 **Oct 31, 2023** 💥 The training and inference code is released. All checkpoints (including FaceForensics, SkyTimelapse, UCF101, and Taichi-HD) can be found [here](https://huggingface.co/maxin-cn/Latte/tree/main). In addition, the LatteT2V inference code is provided.
-
-
-## Setup
-
-First, download and set up the repo:
+## 环境
 
 ```bash
-git clone https://github.com/Vchitect/Latte
-cd Latte
-```
-
-We provide an [`environment.yml`](environment.yml) file that can be used to create a Conda environment. If you only want 
-to run pre-trained models locally on CPU, you can remove the `cudatoolkit` and `pytorch-cuda` requirements from the file.
-
-```bash
+cd XDiMo
 conda env create -f environment.yml
 conda activate latte
+# 或 pip install -r requirements.txt
 ```
 
+需准备：
 
-## Sampling 
+- **共享权重**：将 VAE（如 [sd-vae-ft-ema](https://huggingface.co/stabilityai/sd-vae-ft-mse)）放到 `share_ckpts/vae/`（含 `config.json`、`diffusion_pytorch_model.bin`）。或从 [Latte 共享权重](https://huggingface.co/maxin-cn/Latte/tree/main) 按目录放到 `share_ckpts/`。
+- **数据**：FFS 视频目录，例如 `/data/preprocess_ffs/train/videos` 下放 `.avi` 等视频文件。
 
-You can sample from our **pre-trained Latte models** with [`sample.py`](sample/sample.py). Weights for our pre-trained Latte model can be found [here](https://huggingface.co/maxin-cn/Latte).  The script has various arguments to adjust sampling steps, change the classifier-free guidance scale, etc. For example, to sample from our model on FaceForensics, you can use:
+---
+
+## 在 2×2080Ti 上训练
+
+在仓库根目录执行：
 
 ```bash
-bash sample/ffs.sh
+bash local_train.sh
 ```
 
-or if you want to sample hundreds of videos, you can use the following script with Pytorch DDP:
+即：
 
 ```bash
-bash sample/ffs_ddp.sh
+torchrun --nnodes=1 --nproc_per_node=2 train.py --config ./configs/ffs/ffs_train.yaml
 ```
 
-If you want to try generating videos from text, just run `bash sample/t2v.sh`. All related checkpoints will download automatically.
+- 配置：`configs/ffs/ffs_train.yaml`（默认 Latte-S/2、`data_path`、`pretrained_model_path: "./share_ckpts"`、`results_dir: "./output"`）。
+- 修改数据路径：把 `data_path` 改为你的视频目录（如 `/data/preprocess_ffs/train/videos`）。
+- 输出：日志与 checkpoint 在 `output/<实验名>/`，如 `output/000-Latte-S-2-F16S3-ffs-Gc-Amp/checkpoints/0050000.pt`。
 
-If you would like to measure the quantitative metrics of your generated results, please refer to [here](docs/datasets_evaluation.md).
+---
 
-## Training
+## 在超算上训练（Slurm）
 
-We provide a training script for Latte in [`train.py`](train.py). The structure of the datasets can be found [here](docs/datasets_evaluation.md). This script can be used to train class-conditional and unconditional
-Latte models. To launch Latte (256x256) training with `N` GPUs on the FaceForensics dataset 
-:
+1. 将仓库同步到超算，配置好 conda 与 `share_ckpts`、数据路径。
+2. 在 `configs/ffs/ffs_train.yaml` 中把 `data_path`、`pretrained_model_path` 等改为超算上的路径。
+3. 使用 `scripts/slurm/ffs.slurm`（按集群修改 `#SBATCH` 分区、队列等）：
 
 ```bash
-torchrun --nnodes=1 --nproc_per_node=N train.py --config ./configs/ffs/ffs_train.yaml
+cd XDiMo
+sbatch scripts/slurm/ffs.slurm
 ```
 
-or If you have a cluster that uses slurm, you can also train Latte's model using the following scripts:
+4. 或使用 `scripts/train/ffs_train.sh` 的 torchrun 命令，在作业脚本里调用（见 `scripts/1-node.sh`、`scripts/multi-node.sh` 参考）。
 
- ```bash
-sbatch slurm_scripts/ffs.slurm
-```
+---
 
-We also provide the video-image joint training scripts [`train_with_img.py`](train_with_img.py). Similar to [`train.py`](train.py) scripts, these scripts can be also used to train class-conditional and unconditional
-Latte models. For example, if you want to train the Latte model on the FaceForensics dataset, you can use:
+## 采样
+
+使用训练得到的 checkpoint（如 S/2）生成视频。
+
+**单卡**（示例）：
 
 ```bash
-torchrun --nnodes=1 --nproc_per_node=N train_with_img.py --config ./configs/ffs/ffs_img_train.yaml
+python sample/sample.py --config ./configs/ffs/ffs_sample.yaml --ckpt ./output/xxx/checkpoints/0050000.pt --save_video_path ./output/samples
 ```
 
-If you are familiar with `PyTorch Lightning`, you can also use the training script [`train_pl.py`](train_pl.py) and [`train_with_img_pl.py`](train_with_img_pl.py) provided by [@zhang.haojie](https://github.com/zhang-haojie),
+**双卡 DDP**（生成更多视频、便于算 FVD）：
 
 ```bash
-python train_pl.py --config ./configs/ffs/ffs_train.yaml
+torchrun --nnodes=1 --nproc_per_node=2 sample/sample_ddp.py \
+  --config ./configs/ffs/ffs_sample.yaml \
+  --ckpt ./output/xxx/checkpoints/0050000.pt \
+  --save_video_path ./output/samples
 ```
 
-or
+- `configs/ffs/ffs_sample.yaml` 中 `model`、`num_frames`、`frame_interval` 等需与训练配置一致；`pretrained_model_path` 指向 `./share_ckpts`（VAE）。
+- 生成结果在 `./output/samples`（或你指定的路径），DDP 会额外生成 `.npz` 用于评测。
+- 若仅做快速验证，可将 `configs/ffs/ffs_sample.yaml` 中 `num_fvd_samples` 调小（如 8），否则默认 2048 会较耗时。
+
+---
+
+## 验证精度（FVD 等）
+
+1. 按 [docs/datasets_evaluation.md](docs/datasets_evaluation.md) 准备真实/生成视频（同分辨率、center-crop-resize 等）。
+2. 使用 `tools/` 下脚本计算 FVD 等指标，例如：
 
 ```bash
-python train_with_img_pl.py --config ./configs/ffs/ffs_img_train.yaml
+cd XDiMo
+bash tools/eval_metrics.sh
 ```
 
-This script automatically detects available GPUs and uses distributed training.
+或使用仓库根目录的 `fvd.py`（若已对接）。具体命令与数据格式见 `tools/` 内 README 与 `docs/datasets_evaluation.md`。
 
-## Contact Us
-**Yaohui Wang**: [wangyaohui@pjlab.org.cn](mailto:wangyaohui@pjlab.org.cn)
-**Xin Ma**: [xin.ma1@monash.edu](mailto:xin.ma1@monash.edu)
+---
 
-## Citation
-If you find this work useful for your research, please consider citing it.
-```bibtex
-@article{ma2025latte,
-  title={Latte: Latent Diffusion Transformer for Video Generation},
-  author={Ma, Xin and Wang, Yaohui and Chen, Xinyuan and Jia, Gengyun and Liu, Ziwei and Li, Yuan-Fang and Chen, Cunjian and Qiao, Yu},
-  journal={Transactions on Machine Learning Research},
-  year={2025}
-}
-```
+## 参考
 
-
-## Acknowledgments
-Latte has been greatly inspired by the following amazing works and teams: [DiT](https://github.com/facebookresearch/DiT) and [PixArt-α](https://github.com/PixArt-alpha/PixArt-alpha), we thank all the contributors for open-sourcing.
-
+- Latte 论文与代码：[Latte](https://github.com/Vchitect/Latte)、[Project Page](https://maxin-cn.github.io/latte_project/)。
+- 数据集与评测说明：本仓库 [docs/datasets_evaluation.md](docs/datasets_evaluation.md)、[docs/latte_diffusers.md](docs/latte_diffusers.md)。
+- 性能与规模笔记：[docs/perf.md](docs/perf.md)。
 
 ## License
-The code and model weights are licensed under [LICENSE](LICENSE).
+
+见 [LICENSE](LICENSE)。
