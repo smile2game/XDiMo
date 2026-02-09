@@ -31,5 +31,8 @@ if ! git status --porcelain | grep -q .; then
 fi
 git add -A
 git commit -m "$msg"
+# 先拉取合并远程，避免 push 因分叉被拒
+branch=$(git rev-parse --abbrev-ref HEAD)
+git pull origin "$branch" --no-rebase --no-edit
 git push
 echo "已提交并 push 完成。"
