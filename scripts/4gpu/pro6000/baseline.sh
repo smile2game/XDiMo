@@ -1,5 +1,6 @@
 #!/bin/bash
 # 4卡 pro6000 baseline (bs=1) | 提交: cd XDiMo && jsub < scripts/4gpu/pro6000/baseline.sh
+# 卡数由 -gpgpu 决定；-n = 卡数*8（CPU核数），过高会导致 CPU 资源不足无法启动
 #JSUB -J xdimo-pro6000-4gpu-bs1
 #JSUB -q gpu_pro6000
 #JSUB -n 32
