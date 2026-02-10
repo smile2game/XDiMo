@@ -55,7 +55,7 @@ from transformers import T5EncoderModel, T5Tokenizer
 # 超算队列 GPU -> FP16 峰值 TFLOPS（gpu_6000ada / gpu_4090 / gpu_h100 / gpu_pro6000）
 # 运行时根据 torch.cuda.get_device_name() 自主检测，改 -q 即可
 _GPU_PEAK_TFLOPS_FP16 = [
-    ("H100", 989), ("H200", 989),
+    ("H100", 494), ("H200", 494),
     ("RTX PRO 6000", 200), ("PRO 6000", 200), ("PRO6000", 200),
     ("RTX 6000 ADA", 91.1), ("6000 ADA", 91.1),
     ("RTX 4090", 82.6),
@@ -90,12 +90,28 @@ def get_gpu_short_tag(device):
         pass
     return "gpu"
 
-def estimate_latte_flops_per_forward(num_frames, latent_size, hidden_size=384, num_layers=12):
-    """Latte 单样本单次前向的 FLOPs 估计（Transformer: attention + MLP）。"""
-    n = num_frames * (latent_size ** 2)
+def estimate_latte_flops_per_forward(
+    num_frames,
+    latent_size,
+    hidden_size=384,
+    num_layers=12,
+    patch_size=2,
+    moe_top_k=1,
+):
+    """Latte 单样本单次前向的 FLOPs 估计（Transformer: attention + MLP）。
+
+    注意：Latte 是 patch-wise token，token 数 = num_frames * (latent_size/patch_size)^2。
+    MoE 时仅 MLP 分支按 top_k 粗略放大。
+    """
+    p = patch_size[0] if isinstance(patch_size, (list, tuple)) else patch_size
+    if not p or p <= 0:
+        p = 1
+    n = num_frames * ((latent_size // p) ** 2)
     d = hidden_size
-    # 每层: attention 4nd^2 + 2n^2d, MLP ~8nd^2
-    flops_per_layer = (4 * n * d * d + 2 * n * n * d) + 8 * n * d * d
+    # 每层: attention 4nd^2 + 2n^2d, MLP ~8nd^2 (MoE: 乘 top_k)
+    attn_flops = 4 * n * d * d + 2 * n * n * d
+    mlp_flops = 8 * n * d * d * max(int(moe_top_k), 1)
+    flops_per_layer = attn_flops + mlp_flops
     return num_layers * flops_per_layer
 
 
@@ -200,8 +216,15 @@ def main(args):
     # MFU 测算：用当前模型的 hidden_size、depth 估计单样本前向 FLOPs（否则会沿用默认 S/2 维度导致 MFU 偏低）
     _hidden = getattr(model.module, 'hidden_size', 384)
     _depth = len(getattr(model.module, 'blocks', [])) or 12
+    _patch = getattr(model.module, 'patch_size', 2)
+    _top_k = getattr(model.module, 'top_k', 1)
     flops_forward = estimate_latte_flops_per_forward(
-        args.num_frames, args.latent_size, hidden_size=_hidden, num_layers=_depth
+        args.num_frames,
+        args.latent_size,
+        hidden_size=_hidden,
+        num_layers=_depth,
+        patch_size=_patch,
+        moe_top_k=_top_k,
     )
     peak_tflops = get_peak_tflops_fp16(device)
     world_size = dist.get_world_size()
@@ -213,7 +236,7 @@ def main(args):
         except Exception:
             gpu_name = "unknown"
         logger.info("---------- Compute & MFU ----------")
-        logger.info(f"  FLOPs 使用维度:   hidden_size={_hidden}, num_layers={_depth}")
+        logger.info(f"  FLOPs 使用维度:   hidden_size={_hidden}, num_layers={_depth}, patch_size={_patch}, top_k={_top_k}")
         logger.info(f"  Parameters:        {num_params:,} ({num_params/1e6:.2f}M)")
         logger.info(f"  FLOPs/sample(fwd): {flops_forward/1e12:.4f} TFLOPs ({flops_forward/1e15:.4f} PFLOPs)")
         logger.info(f"  FLOPs/step(3×fwd×B): {flops_per_step/1e12:.4f} TFLOPs (global_batch={global_batch})")
