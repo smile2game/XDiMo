@@ -8,7 +8,7 @@ EXCLUDE="${REPO}/.rsync_exclude"
 REMOTE="${REMOTE:-liuhuijie@10.150.2.4}"
 REMOTE_DIR="${REMOTE_DIR:-/public/home/liuhuijie/dits/XDiMo/}"
 
-sshpass -p "${SSHPASS:-Hpc1234#$}" rsync -avzP --exclude-from="$EXCLUDE" "${REMOTE}:${REMOTE_DIR}" "${REPO}/"
+sshpass -p "${SSHPASS:-Hpc1234#$}" rsync -avzP --update --exclude-from="$EXCLUDE" "${REMOTE}:${REMOTE_DIR}" "${REPO}/"
 echo "拉取完成: ${REPO}/"
 
 read -r -p "是否提交并 push? (yes/no): " answer
@@ -31,8 +31,17 @@ if ! git status --porcelain | grep -q .; then
 fi
 git add -A
 git commit -m "$msg"
-# 先拉取合并远程，避免 push 因分叉被拒；若有冲突请手动解决后 git push
+# 先 rebase 远程，尽量自动解决非冲突场景（可提示确认）
 branch=$(git rev-parse --abbrev-ref HEAD)
-git pull origin "$branch" --no-rebase --no-edit
+read -r -p "即将执行 git pull --rebase --autostash，是否继续？(y/n): " rebase_answer
+rebase_answer="$(echo "$rebase_answer" | tr '[:upper:]' '[:lower:]')"
+if [[ "$rebase_answer" != "y" && "$rebase_answer" != "yes" ]]; then
+  echo "已跳过 rebase，请手动同步远程后再 push。"
+  exit 1
+fi
+if ! git pull --rebase --autostash origin "$branch"; then
+  echo "自动 rebase 失败（可能有冲突）。请手动解决后再执行 git push。"
+  exit 1
+fi
 git push
 echo "已提交并 push 完成。"
