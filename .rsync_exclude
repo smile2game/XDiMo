@@ -1,6 +1,7 @@
 # 与 .gitignore 对齐，同步时排除（output/、权重、缓存等）
 # 大本营以 xdimo/ 为准，拉取时忽略超算旧版 src/ 与根目录重复文档
 src/
+/.git/
 /STRUCTURE.md
 /perf.md
 output/
