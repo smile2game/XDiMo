@@ -15,4 +15,4 @@ bash "$FETCH"
 
 sshpass -p "${SSHPASS:-Hpc1234#$}" rsync -avzP --exclude-from="$EXCLUDE" "${REPO}/" "${REMOTE}:${REMOTE_DIR}"
 sshpass -p "${SSHPASS:-Hpc1234#$}" ssh -o StrictHostKeyChecking=accept-new "${REMOTE}" "rm -rf ${REMOTE_DIR}src" 2>/dev/null || true
-echo "推送完成（已移除远程 src/）"
+echo "推送完成"
