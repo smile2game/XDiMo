@@ -583,35 +583,42 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
 #                                   Latte Configs                                  #
 #################################################################################
 def Latte_XL_2_MoE(**kwargs):
+    num_experts = kwargs.pop('num_experts', 4)
+    top_k = kwargs.pop('top_k', 2)
     return Latte(
-        depth=28, 
-        hidden_size=1152, 
-        patch_size=2, 
+        depth=28,
+        hidden_size=1152,
+        patch_size=2,
         num_heads=16,
-        num_experts=4,       # MoE-specific parameters
-        top_k=2,
+        num_experts=num_experts,
+        top_k=top_k,
         **kwargs
     )
 
 def Latte_L_2_MoE(**kwargs):
+    # 从 kwargs 取出 MoE 参数，避免 get_models 已注入时重复传参导致 TypeError
+    num_experts = kwargs.pop('num_experts', 4)
+    top_k = kwargs.pop('top_k', 2)
     return Latte(
-        depth=24,              # 从 28 改为 24
-        hidden_size=1024,      # 从 1152 改为 1024
-        patch_size=2, 
+        depth=24,
+        hidden_size=1024,
+        patch_size=2,
         num_heads=16,
-        num_experts=4,        # MoE 参数
-        top_k=2,
+        num_experts=num_experts,
+        top_k=top_k,
         **kwargs
     )
 
 def Latte_L_4_MoE(**kwargs):
+    num_experts = kwargs.pop('num_experts', 4)
+    top_k = kwargs.pop('top_k', 2)
     return Latte(
-        depth=24,              # 从 28 改为 24
-        hidden_size=1024,      # 从 1152 改为 1024
-        patch_size=4, 
+        depth=24,
+        hidden_size=1024,
+        patch_size=4,
         num_heads=16,
-        num_experts=4,        # MoE 参数
-        top_k=2,
+        num_experts=num_experts,
+        top_k=top_k,
         **kwargs
     )
 
@@ -627,14 +634,15 @@ def Latte_XL_8(**kwargs):
     return Latte(depth=28, hidden_size=1152, patch_size=8, num_heads=16, **kwargs)
 
 def Latte_L_2(**kwargs):
-    # return Latte(depth=24, hidden_size=1024, patch_size=2, num_heads=16, **kwargs)
+    num_experts = kwargs.pop('num_experts', 4)
+    top_k = kwargs.pop('top_k', 2)
     return Latte(
-        depth=24,              # 从 28 改为 24
-        hidden_size=1024,      # 从 1152 改为 1024
-        patch_size=2, 
+        depth=24,
+        hidden_size=1024,
+        patch_size=2,
         num_heads=16,
-        num_experts=4,        # MoE 参数
-        top_k=2,
+        num_experts=num_experts,
+        top_k=top_k,
         **kwargs
     )
 

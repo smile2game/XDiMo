@@ -4,7 +4,7 @@ data_path: "/public/home/liuhuijie/dits/dataset/preprocess_ffs/train/videos"
 pretrained_model_path: "./share_ckpts"
 results_dir: "./output"
 pretrained: null
-model: Latte-S/2
+model: Latte-L/2-MoE
 num_frames: 16
 image_size: 256
 num_sampling_steps: 250
@@ -13,8 +13,8 @@ fixed_spatial: False
 attention_bias: True
 learn_sigma: True
 extras: 1
-num_experts: 2
-top_k: 1
+num_experts: 4
+top_k: 2
 expert_capacity_factor: 1.0
 save_ceph: True
 learning_rate: 1e-4

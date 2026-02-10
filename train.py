@@ -29,6 +29,7 @@ import torch.distributed as dist
 from glob import glob
 from time import time
 from copy import deepcopy
+from datetime import datetime
 from einops import rearrange
 from models import get_models
 from datasets import get_dataset
@@ -72,6 +73,23 @@ def get_peak_tflops_fp16(device):
         pass
     return 82.6  # 未知 GPU 保守估计（按 4090）
 
+
+def get_gpu_short_tag(device):
+    """用于 output 目录命名：根据 GPU 型号返回短标签（如 6000ada / h200 / pro6000）。"""
+    try:
+        name = (torch.cuda.get_device_name(device) or "").upper()
+        if "H200" in name or "H100" in name:
+            return "h200"
+        if "6000 ADA" in name:
+            return "6000ada"
+        if "PRO 6000" in name or "PRO6000" in name:
+            return "pro6000"
+        if "4090" in name:
+            return "4090"
+    except Exception:
+        pass
+    return "gpu"
+
 def estimate_latte_flops_per_forward(num_frames, latent_size, hidden_size=384, num_layers=12):
     """Latte 单样本单次前向的 FLOPs 估计（Transformer: attention + MLP）。"""
     n = num_frames * (latent_size ** 2)
@@ -100,12 +118,15 @@ def main(args):
     torch.cuda.set_device(device)
 
     # Setup an experiment folder:
+    world_size = dist.get_world_size()  # 卡数，DDP 下即 GPU 数量
     if rank == 0:
         os.makedirs(args.results_dir, exist_ok=True)  # Make results folder (holds all experiment subfolders)
         experiment_index = len(glob(f"{args.results_dir}/*"))
         model_string_name = args.model.replace("/", "-")  # e.g., Latte-XL/2 --> Latte-XL-2 (for naming folders)
         num_frame_string = 'F' + str(args.num_frames) + 'S' + str(args.frame_interval)
-        experiment_dir = f"{args.results_dir}/{experiment_index:03d}-{model_string_name}-{num_frame_string}-{args.dataset}"  # Create an experiment folder
+        gpu_tag = get_gpu_short_tag(device)
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M")
+        experiment_dir = f"{args.results_dir}/{experiment_index:03d}-{model_string_name}-{num_frame_string}-{args.dataset}-{gpu_tag}-{world_size}gpu-{timestamp}"
         experiment_dir = get_experiment_dir(experiment_dir, args)
         checkpoint_dir = f"{experiment_dir}/checkpoints"  # Stores saved model checkpoints
         os.makedirs(checkpoint_dir, exist_ok=True)
@@ -176,8 +197,12 @@ def main(args):
 
     num_params = sum(p.numel() for p in model.parameters())
     logger.info(f"Model Parameters: {num_params:,}")
-    # MFU 测算：单样本前向 FLOPs、单卡峰值 TFLOPS
-    flops_forward = estimate_latte_flops_per_forward(args.num_frames, args.latent_size)
+    # MFU 测算：用当前模型的 hidden_size、depth 估计单样本前向 FLOPs（否则会沿用默认 S/2 维度导致 MFU 偏低）
+    _hidden = getattr(model.module, 'hidden_size', 384)
+    _depth = len(getattr(model.module, 'blocks', [])) or 12
+    flops_forward = estimate_latte_flops_per_forward(
+        args.num_frames, args.latent_size, hidden_size=_hidden, num_layers=_depth
+    )
     peak_tflops = get_peak_tflops_fp16(device)
     world_size = dist.get_world_size()
     global_batch = args.local_batch_size * world_size
@@ -188,6 +213,7 @@ def main(args):
         except Exception:
             gpu_name = "unknown"
         logger.info("---------- Compute & MFU ----------")
+        logger.info(f"  FLOPs 使用维度:   hidden_size={_hidden}, num_layers={_depth}")
         logger.info(f"  Parameters:        {num_params:,} ({num_params/1e6:.2f}M)")
         logger.info(f"  FLOPs/sample(fwd): {flops_forward/1e12:.4f} TFLOPs ({flops_forward/1e15:.4f} PFLOPs)")
         logger.info(f"  FLOPs/step(3×fwd×B): {flops_per_step/1e12:.4f} TFLOPs (global_batch={global_batch})")
@@ -331,12 +357,14 @@ def main(args):
                 avg_loss = avg_loss.item() / dist.get_world_size()
                 achieved_tflops = flops_per_step * steps_per_sec / 1e12
                 mfu = min(achieved_tflops / (world_size * peak_tflops), 1.0)  # 防止峰值估计偏小导致 >100%
+                samples_per_sec = steps_per_sec * global_batch  # 样本吞吐（samples/s），即 token/视频 吞吐
                 logger.info(
                     f"(step={train_steps:07d}/epoch={epoch:04d}) Loss: {avg_loss:.4f} | GradNorm: {gradient_norm:.4f} | "
-                    f"Steps/Sec: {steps_per_sec:.2f} | Achieved: {achieved_tflops:.2f} TFLOPs/s | MFU: {mfu*100:.2f}%"
+                    f"Steps/Sec: {steps_per_sec:.2f} | Samples/s: {samples_per_sec:.2f} | Achieved: {achieved_tflops:.2f} TFLOPs/s | MFU: {mfu*100:.2f}%"
                 )
                 write_tensorboard(tb_writer, 'Train Loss', avg_loss, train_steps)
                 write_tensorboard(tb_writer, 'Gradient Norm', gradient_norm, train_steps)
+                write_tensorboard(tb_writer, 'Samples/s', samples_per_sec, train_steps)
                 write_tensorboard(tb_writer, 'MFU', mfu, train_steps)
                 # wandb 记录（已注释）
                 # if rank == 0:
