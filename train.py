@@ -208,7 +208,6 @@ def main(args):
     requires_grad(ema, False)
   
     # set distributed training
-    # 模型存在部分参数未参与 loss 的情况（如 dropout/条件分支），必须设为 True 否则 DDP 会报错
     model = DDP(model.to(device), device_ids=[local_rank], find_unused_parameters=True)
 
     num_params = sum(p.numel() for p in model.parameters())

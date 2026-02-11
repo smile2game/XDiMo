@@ -5,6 +5,7 @@ sys.path.append(os.path.split(sys.path[0])[0])
 from .latte import Latte_models
 from .latte_img import LatteIMG_models
 from .latte_t2v import LatteT2V
+from .xdimo import xdimo_models
 
 from torch.optim.lr_scheduler import LambdaLR
 
@@ -39,6 +40,22 @@ def get_models(args):
             )
     elif 'LatteT2V' in args.model:
         return LatteT2V.from_pretrained(args.pretrained_model_path, subfolder="transformer", video_length=args.video_length)
+    elif 'xdimo' in args.model.lower():
+        kwargs = dict(
+            input_size=args.latent_size,
+            num_classes=args.num_classes,
+            num_frames=args.num_frames,
+            learn_sigma=args.learn_sigma,
+            extras=args.extras,
+        )
+        if 'MoE' in args.model:
+            if getattr(args, 'num_experts', None) is not None:
+                kwargs['num_experts'] = args.num_experts
+            if getattr(args, 'top_k', None) is not None:
+                kwargs['top_k'] = args.top_k
+            if getattr(args, 'expert_capacity_factor', None) is not None:
+                kwargs['expert_capacity_factor'] = args.expert_capacity_factor
+        return xdimo_models[args.model](**kwargs)
     elif 'Latte' in args.model:
         kwargs = dict(
             input_size=args.latent_size,

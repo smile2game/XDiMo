@@ -13,5 +13,6 @@ mkdir -p ./output/logs ./output/samples
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
 conda activate latte
 
+unset CUDA_LAUNCH_BLOCKING
 torchrun --nnodes=1 --nproc_per_node=8 --master_port=$((29500 + RANDOM % 1000)) \
-  train.py --config ./configs/ffs/ffs_train_4gpu_bs1.yaml
+  train.py --config ./configs/ffs/ffs_train_bs1.yaml

@@ -14,4 +14,4 @@ source "$HOME/miniconda3/etc/profile.d/conda.sh"
 conda activate latte
 
 torchrun --nnodes=1 --nproc_per_node=1 --master_port=$((29500 + RANDOM % 1000)) \
-  train.py --config ./configs/ffs/ffs_train_4gpu_bs1.yaml
+  train.py --config ./configs/ffs/ffs_train_bs1.yaml

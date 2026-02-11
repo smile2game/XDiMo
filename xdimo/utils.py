@@ -127,6 +127,9 @@ def clip_grad_norm_(
 def get_experiment_dir(root_dir, args):
     # if args.pretrained is not None and 'Latte-XL-2-256x256.pt' not in args.pretrained:
     #     root_dir += '-WOPRE'
+    # MoE：专家数 E、激活数 K 写入目录名，便于区分不同配置
+    if getattr(args, 'num_experts', None) is not None and getattr(args, 'top_k', None) is not None:
+        root_dir += f'-E{args.num_experts}K{args.top_k}'
     if args.use_compile:
         root_dir += '-Compile' # speedup by torch compile
     if args.fixed_spatial:
