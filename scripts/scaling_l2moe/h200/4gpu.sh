@@ -1,6 +1,4 @@
 #!/bin/bash
-# Latte-L/2-MoE 4卡 H200 | 表一-B 4×H200（今晚只跑 1 个四卡任务）
-# 卡数由 -gpgpu 决定；-n = 卡数*8
 #JSUB -J l2moe-h200-4gpu
 #JSUB -q gpu_h200
 #JSUB -n 32

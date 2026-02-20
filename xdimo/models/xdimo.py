@@ -188,7 +188,6 @@ class MoETransformerBlock(nn.Module):
             nn.SiLU(),
             nn.Linear(hidden_size, 6 * hidden_size, bias=True)
         )
-        print(f"We get the real MoE!!!!")
 
     def forward(self, x, c):
         shift_msa, scale_msa, gate_msa, shift_mlp, scale_mlp, gate_mlp = self.adaLN_modulation(c).chunk(6, dim=1)
@@ -433,37 +432,72 @@ class xdimo(nn.Module):
 
     # @torch.cuda.amp.autocast()
     # @torch.compile
-    def forward(self, 
-                x, 
-                t, 
-                y=None, 
-                text_embedding=None, 
-                use_fp16=False):
+    def forward(self,
+                x,
+                t,
+                y=None,
+                text_embedding=None,
+                use_fp16=False,
+                verbose=False):
         """
         Forward pass of xdimo.
         x: (N, F, C, H, W) tensor of video inputs
         t: (N,) tensor of diffusion timesteps
         y: (N,) tensor of class labels
+        verbose: 若为 True，打印每一步的输入/输出张量尺寸及对应公式与数值
         """
+        def _log(step, name, inp_shape, out_shape, formula_str=""):
+            if not verbose:
+                return
+            fmt = "  {:<6} {}  |  输入: {}  ->  输出: {}"
+            print(fmt.format(step, name, inp_shape, out_shape))
+            if formula_str:
+                print("           公式: " + formula_str)
+
         if use_fp16:
             x = x.to(dtype=torch.float16)
 
-        batches, frames, channels, high, weight = x.shape 
+        batches, frames, channels, high, weight = x.shape
+        # 步骤 1: 输入与重排
+        _log("1", "输入视频 x", str(tuple(x.shape)), str(tuple(x.shape)),
+             "x: (B, F, C, H, W) = ({}, {}, {}, {}, {})".format(batches, frames, channels, high, weight))
+
         x = rearrange(x, 'b f c h w -> (b f) c h w')
-        x = self.x_embedder(x) + self.pos_embed  
-        t = self.t_embedder(t, use_fp16=use_fp16)                  
-        timestep_spatial = repeat(t, 'n d -> (n c) d', c=self.temp_embed.shape[1]) 
+        _log("2", "rearrange → 按帧展平", "(B,F,C,H,W)", "(B*F, C, H, W)",
+             "B*F = {}*{} = {}".format(batches, frames, batches * frames))
+
+        # 步骤 3: Patch Embedding
+        # num_patches = (H/patch_size)*(W/patch_size)
+        grid = high // self.patch_size
+        num_patches = self.x_embedder.num_patches
+        x = self.x_embedder(x) + self.pos_embed
+        _log("3", "x_embedder + pos_embed", "(B*F, C, H, W)", "(B*F, num_patches, D)",
+             "num_patches = (H/p)^2 = ({}/{})^2 = {}, D = hidden_size = {}".format(
+                 high, self.patch_size, num_patches, self.hidden_size))
+        _log("", "  → 输出", "", str(tuple(x.shape)), "")
+
+        t = self.t_embedder(t, use_fp16=use_fp16)
+        _log("4", "t_embedder(t)", "(B,) 标量步", "(B, D)",
+             "t_embedding_dim = {}".format(self.hidden_size))
+
+        timestep_spatial = repeat(t, 'n d -> (n c) d', c=self.temp_embed.shape[1])
         timestep_temp = repeat(t, 'n d -> (n c) d', c=self.pos_embed.shape[1])
+        _log("5", "timestep 复制到 spatial/temp", "(B, D)", "(B*F 或 B*T, D)",
+             "spatial: (B, D) -> (B, F, D) 展平 = (B*F, D) = ({}, {}), temp: (B*num_patches, D)".format(
+                 batches * frames, self.hidden_size))
 
         if self.extras == 2:
             y = self.y_embedder(y, self.training)
-            y_spatial = repeat(y, 'n d -> (n c) d', c=self.temp_embed.shape[1]) 
+            y_spatial = repeat(y, 'n d -> (n c) d', c=self.temp_embed.shape[1])
             y_temp = repeat(y, 'n d -> (n c) d', c=self.pos_embed.shape[1])
+            if verbose:
+                print("  {:<6} y_embedder + repeat  |  y: (B,) -> (B, D), y_spatial: (B*F, D), y_temp: (B*num_patches, D)".format("5b"))
         elif self.extras == 78:
             text_embedding = self.text_embedding_projection(text_embedding.reshape(batches, -1))
             text_embedding_spatial = repeat(text_embedding, 'n d -> (n c) d', c=self.temp_embed.shape[1])
             text_embedding_temp = repeat(text_embedding, 'n d -> (n c) d', c=self.pos_embed.shape[1])
 
+        block_step = 6
         for i in range(0, len(self.blocks), 2):
             spatial_block, temp_block = self.blocks[i:i+2]
             if self.extras == 2:
@@ -472,12 +506,24 @@ class xdimo(nn.Module):
                 c = timestep_spatial + text_embedding_spatial
             else:
                 c = timestep_spatial
-            x  = spatial_block(x, c)
+
+            if verbose:
+                print("  ------ Block pair {}/{} (spatial -> temporal) ------".format(i // 2 + 1, len(self.blocks) // 2))
+            x_in = x
+            x = spatial_block(x, c)
+            _log(str(block_step), "Spatial MoE Block", str(tuple(x_in.shape)), str(tuple(x.shape)),
+                 "seq = B*F = {}, dim = {}".format(x.shape[0], x.shape[2]))
+            block_step += 1
 
             x = rearrange(x, '(b f) t d -> (b t) f d', b=batches)
-            # Add Time Embedding
+            _log(str(block_step), "rearrange → 时间维", "(B*F, num_patches, D)", "(B*num_patches, F, D)",
+                 "(B*F, T, D) -> (B*T, F, D), T=num_patches={}".format(num_patches))
+            block_step += 1
+
             if i == 0:
                 x = x + self.temp_embed
+                if verbose:
+                    print("           公式: temp_embed: (1, F, D) = (1, {}, {}) broadcast 加".format(self.num_frames, self.hidden_size))
 
             if self.extras == 2:
                 c = timestep_temp + y_temp
@@ -486,16 +532,40 @@ class xdimo(nn.Module):
             else:
                 c = timestep_temp
 
+            x_in = x
             x = temp_block(x, c)
+            _log(str(block_step), "Temporal MoE Block", str(tuple(x_in.shape)), str(tuple(x.shape)),
+                 "seq = B*num_patches = {}, F = {}".format(x.shape[0] // batches, x.shape[1]))
+            block_step += 1
+
             x = rearrange(x, '(b t) f d -> (b f) t d', b=batches)
+            _log(str(block_step), "rearrange → 空间维", "(B*num_patches, F, D)", "(B*F, num_patches, D)",
+                 "恢复为 (B*F, T, D) 进入下一对 block")
+            block_step += 1
 
         if self.extras == 2:
             c = timestep_spatial + y_spatial
         else:
             c = timestep_spatial
-        x = self.final_layer(x, c)               
-        x = self.unpatchify(x)                  
+        x_in = x
+        x = self.final_layer(x, c)
+        _log(str(block_step), "final_layer", str(tuple(x_in.shape)), "(B*F, num_patches, p^2*out_ch)",
+             "linear: D -> patch_size^2*out_channels = {} -> {}*{}*{}".format(
+                 self.hidden_size, self.patch_size, self.patch_size, self.out_channels))
+        block_step += 1
+
+        x = self.unpatchify(x)
+        h = w = int(x.shape[1] ** 0.5)
+        _log(str(block_step), "unpatchify", "(B*F, T, p^2*C)", "(B*F, C, H, W)",
+             "h=w=sqrt(T)={}, H=W=h*p={}*{}={}".format(h, h, self.patch_size, h * self.patch_size))
+        block_step += 1
+
         x = rearrange(x, '(b f) c h w -> b f c h w', b=batches)
+        _log(str(block_step), "rearrange → 输出视频", "(B*F, C, H, W)", "(B, F, C, H, W)",
+             "out: (B, F, out_channels, H, W) = ({}, {}, {}, {}, {})".format(
+                 batches, frames, self.out_channels, x.shape[3], x.shape[4]))
+        if verbose:
+            print_forward_flops(self, batches, frames, high, weight)
         return x
 
     def forward_with_cfg(self, x, t, y=None, cfg_scale=7.0, use_fp16=False, text_embedding=None):
@@ -518,6 +588,291 @@ class xdimo(nn.Module):
         half_eps = uncond_eps + cfg_scale * (cond_eps - uncond_eps)
         eps = torch.cat([half_eps, half_eps], dim=0) 
         return torch.cat([eps, rest], dim=2)
+
+
+def get_xdimo_config(model, input_size=32):
+    """
+    从任意 xdimo 模型提取用于参数量/计算量统计的配置（通用，支持 MoE 与 非 MoE）。
+    """
+    if not hasattr(model, 'hidden_size'):
+        return None
+    D = model.hidden_size
+    p = model.patch_size if isinstance(model.patch_size, int) else model.patch_size[0]
+    num_patches = (input_size // p) ** 2
+    cfg = {
+        'D': D,
+        'p': p,
+        'in_ch': model.in_channels,
+        'out_ch': model.out_channels,
+        'num_patches': num_patches,
+        'num_frames': model.num_frames,
+        'depth': len(model.blocks),
+        'num_heads': model.num_heads,
+    }
+    block0 = model.blocks[0]
+    if hasattr(block0, 'experts'):
+        cfg['mlp_hidden'] = block0.experts[0].fc1.out_features
+        cfg['num_experts'] = block0.num_experts
+        cfg['top_k'] = block0.top_k
+        cfg['is_moe'] = True
+    else:
+        cfg['mlp_hidden'] = block0.mlp.fc1.out_features
+        cfg['num_experts'] = 0
+        cfg['top_k'] = 0
+        cfg['is_moe'] = False
+    return cfg
+
+
+# ---------- 计算量(FLOPs) 公式与数值，通用用于任意 xdimo 变体 ----------
+# 约定: FLOPs = 一次乘法+加法计为 2 FLOPs（即 2*MACs）
+
+def _flops_linear(B, in_f, out_f):
+    """Linear: 2 * B * in_f * out_f"""
+    return 2 * B * in_f * out_f
+
+
+def _flops_conv2d(B, C_in, C_out, H_out, W_out, k):
+    """Conv2d: 2 * B * C_out * H_out * W_out * (C_in * k * k)"""
+    return 2 * B * C_out * H_out * W_out * C_in * k * k
+
+
+def _flops_attention(B, N, D, num_heads):
+    """Attention: qkv 6*B*N*D^2, QK^T 2*B*N^2*D, attn@V 2*B*N^2*D, proj 2*B*N*D^2 -> 8*B*N*D^2 + 4*B*N^2*D"""
+    return 8 * B * N * D * D + 4 * B * N * N * D
+
+
+def _flops_layernorm(B, N, D):
+    """LayerNorm (无 affine): 约 5*B*N*D (mean, var, normalize)"""
+    return 5 * B * N * D
+
+
+def _flops_adaln_modulation(B, D, num_chunks=6):
+    """adaLN: Linear(D -> num_chunks*D), 2*B*D*(num_chunks*D)"""
+    return 2 * B * D * (num_chunks * D)
+
+
+def _flops_mlp(B, N, D, mlp_hidden):
+    """MLP: fc1 2*B*N*D*mlp_hidden, fc2 2*B*N*mlp_hidden*D"""
+    return 2 * B * N * D * mlp_hidden + 2 * B * N * mlp_hidden * D
+
+
+def _flops_moe(B, N, D, mlp_hidden, num_experts, top_k):
+    """MoE: gate 2*B*N*D*E; 每个 token 走 top_k 个 expert，每个 expert 2*D*mlp_h + 2*mlp_h*D -> 4*B*N*top_k*D*mlp_hidden"""
+    gate_flops = 2 * B * N * D * num_experts
+    experts_flops = 4 * B * N * top_k * D * mlp_hidden
+    return gate_flops + experts_flops
+
+
+def flops_one_transformer_block(is_moe, B, N, D, num_heads, mlp_hidden, num_experts, top_k):
+    """
+    单层 Transformer block 的 FLOPs（含 2 个 LayerNorm、Attention、adaLN、MLP 或 MoE）。
+    通用: 可用于 spatial（N=num_patches）或 temporal（N=num_frames）。
+    """
+    ln = 2 * _flops_layernorm(B, N, D)
+    attn = _flops_attention(B, N, D, num_heads)
+    adaln = _flops_adaln_modulation(B, D, 6)
+    if is_moe:
+        mlp_part = _flops_moe(B, N, D, mlp_hidden, num_experts, top_k)
+    else:
+        mlp_part = _flops_mlp(B, N, D, mlp_hidden)
+    return ln + attn + adaln + mlp_part
+
+
+def compute_forward_flops_per_step(model, B, F, H, W):
+    """
+    按前向传播步骤计算各步 FLOPs，返回 [(step_name, formula_str, flops_value), ...]。
+    通用：适用于任意 xdimo 配置（L/2-MoE、XL/2、S/4 等）。
+    """
+    cfg = get_xdimo_config(model, H)
+    if cfg is None:
+        return []
+    D = cfg['D']
+    p = cfg['p']
+    in_ch = cfg['in_ch']
+    out_ch = cfg['out_ch']
+    num_patches = cfg['num_patches']
+    num_frames = cfg['num_frames']
+    depth = cfg['depth']
+    num_heads = cfg['num_heads']
+    mlp_hidden = cfg['mlp_hidden']
+    num_experts = cfg['num_experts']
+    top_k = cfg['top_k']
+    is_moe = cfg['is_moe']
+
+    BF = B * F
+    BT = B * num_patches
+    steps = []
+
+    # 1. 输入 / 2. rearrange：无计算
+    steps.append(("1-2", "输入 + rearrange", "0", 0))
+
+    # 3. x_embedder (Conv2d) + pos_embed (加法忽略)
+    # Conv: B*F, (H/p)*(W/p), in_ch*p^2 -> D
+    H_out = H // p
+    W_out = W // p
+    f_embed = _flops_conv2d(BF, in_ch, D, H_out, W_out, p)
+    steps.append(("3", "x_embedder (Conv2d)", "2*B*F*(H/p)*(W/p)*in_ch*p^2*D = 2*{}*{}*{}*{}*{}".format(BF, H_out, W_out, in_ch, D), f_embed))
+
+    # 4. t_embedder: B, 256->D, D->D
+    f_t = 2 * B * 256 * D + 2 * B * D * D
+    steps.append(("4", "t_embedder", "2*B*256*D + 2*B*D^2 = 2*{}*256*{} + 2*{}*{}^2".format(B, D, B, D), f_t))
+
+    # 5. timestep repeat / 5b y_embedder：查表与复制，忽略或计 B*D
+    steps.append(("5-5b", "timestep/y repeat", "0 (查表与复制)", 0))
+
+    # 6 起: 成对 spatial + temporal block
+    block_step = 6
+    f_spatial_one = flops_one_transformer_block(is_moe, BF, num_patches, D, num_heads, mlp_hidden, num_experts, top_k)
+    f_temporal_one = flops_one_transformer_block(is_moe, BT, num_frames, D, num_heads, mlp_hidden, num_experts, top_k)
+    formula_s = "LayerNorm*2+Attn+adaLN+{} (B*F={}, N=num_patches={})".format("MoE" if is_moe else "MLP", BF, num_patches)
+    formula_t = "LayerNorm*2+Attn+adaLN+{} (B*T={}, N=F={})".format("MoE" if is_moe else "MLP", BT, num_frames)
+
+    for i in range(0, depth, 2):
+        steps.append((str(block_step), "Spatial Block", formula_s, f_spatial_one))
+        block_step += 1
+        steps.append((str(block_step), "rearrange (时间维)", "0", 0))
+        block_step += 1
+        if i == 0:
+            steps.append(("", "temp_embed 加", "0", 0))
+        steps.append((str(block_step), "Temporal Block", formula_t, f_temporal_one))
+        block_step += 1
+        steps.append((str(block_step), "rearrange (空间维)", "0", 0))
+        block_step += 1
+
+    # final_layer: adaLN 2*D*D (c 为 B*F), linear 2*B*F*num_patches*D*(p^2*out_ch)
+    f_adaln_final = 2 * BF * D * (2 * D)
+    f_linear_final = 2 * BF * num_patches * D * (p * p * out_ch)
+    steps.append((str(block_step), "final_layer", "adaLN: 2*B*F*D*2*D; linear: 2*B*F*T*D*(p^2*out_ch)", f_adaln_final + f_linear_final))
+    block_step += 1
+
+    # unpatchify / 最后 rearrange：无乘加
+    steps.append((str(block_step), "unpatchify + rearrange", "0", 0))
+
+    return steps
+
+
+def print_forward_flops(model, B, F, H, W):
+    """打印前向传播各步计算量（公式 + 代入数值），通用任意 xdimo 模型。"""
+    steps = compute_forward_flops_per_step(model, B, F, H, W)
+    if not steps:
+        print("无法解析模型配置，跳过 FLOPs 打印")
+        return
+    total = 0
+    print("=" * 70)
+    print("前向传播计算量 (FLOPs)：公式 + 代入数值")
+    print("=" * 70)
+    cfg = get_xdimo_config(model, H)
+    print("符号: B={}, F={}, H=W={}, D={}, num_patches={}, depth={}, is_moe={}".format(
+          B, F, H, cfg['D'], cfg['num_patches'], cfg['depth'], cfg['is_moe']))
+    print("-" * 70)
+    for step_id, name, formula, flops in steps:
+        total += flops
+        if step_id:
+            print("  步骤 {}  {}  |  FLOPs = {}".format(step_id, name, flops))
+        else:
+            print("          {}  |  FLOPs = {}".format(name, flops))
+        if formula and formula != "0":
+            print("           公式: {}".format(formula))
+    print("-" * 70)
+    print("总 FLOPs = {} = {:.2f}G".format(total, total / 1e9))
+    print("=" * 70)
+
+
+def print_param_count_with_formula(model, input_size=32, num_classes=1000):
+    """
+    打印 xdimo 模型参数量，包含公式与代入后的具体数值。
+    通用：适用于任意 xdimo 变体（MoE 与 非 MoE）。
+    """
+    cfg = get_xdimo_config(model, input_size)
+    if cfg is None:
+        total = sum(p.numel() for p in model.parameters())
+        print("总参数量: {} = {:.2f}M".format(total, total / 1e6))
+        return
+
+    D = cfg['D']
+    p = cfg['p']
+    in_ch = cfg['in_ch']
+    out_ch = model.out_channels
+    num_patches = cfg['num_patches']
+    depth = cfg['depth']
+    num_experts = cfg['num_experts']
+
+    print("=" * 60)
+    print("xdimo 模型参数量统计（公式 + 代入数值）")
+    print("=" * 60)
+    print("符号: D=hidden_size={}, p=patch_size={}, in_ch={}, out_ch={}".format(D, p, in_ch, out_ch))
+    print("      num_patches=(H/p)^2={}^2={}, depth={}, num_experts={}".format(
+          input_size // p, num_patches, depth, num_experts))
+    print("-" * 60)
+
+    total_calc = 0
+    mlp_hidden = cfg['mlp_hidden']
+
+    # 1. x_embedder (PatchEmbed: Conv2d)
+    w = model.x_embedder.proj.weight
+    b = model.x_embedder.proj.bias
+    embed_params = w.numel() + (b.numel() if b is not None else 0)
+    formula = "in_ch * p^2 * D + D = {}*{}*{} + {} = {}".format(in_ch, p * p, D, D, embed_params)
+    print("1. x_embedder (PatchEmbed):  {}  |  {}".format(embed_params, formula))
+    total_calc += embed_params
+
+    # 2. t_embedder
+    freq_dim = 256
+    t0 = freq_dim * D + D
+    t1 = D * D + D
+    t_params = t0 + t1
+    formula = "256*D+D + D*D+D = {} + {} = {}".format(t0, t1, t_params)
+    print("2. t_embedder:                {}  |  {}".format(t_params, formula))
+    total_calc += t_params
+
+    # 3. y_embedder (若存在)
+    if model.extras == 2 and hasattr(model, 'y_embedder'):
+        y_params = model.y_embedder.embedding_table.weight.numel()
+        formula = "(num_classes+1)*D = {}*{} = {}".format(num_classes + 1, D, y_params)
+        print("3. y_embedder:                {}  |  {}".format(y_params, formula))
+        total_calc += y_params
+    else:
+        print("3. y_embedder:                (未使用 extras=2)")
+
+    # 4. pos_embed / temp_embed
+    print("4. pos_embed / temp_embed:    (固定，不训练)")
+
+    # 5. Transformer blocks
+    block = model.blocks[0]
+    one_block = sum(p.numel() for p in block.parameters())
+    if cfg['is_moe']:
+        attn_params = (3 * D * D + 3 * D) + (D * D + D)
+        one_mlp = D * mlp_hidden + mlp_hidden + mlp_hidden * D + D
+        moe_mlp_params = num_experts * one_mlp
+        gate_params = D * num_experts
+        adaln_params = D * (6 * D) + (6 * D)
+        formula = "attn(3D^2+3D+D^2+D) + num_experts*(2*D*mlp_h+mlp_h+D) + D*E + adaLN(6D^2+6D)"
+        print("5. 单 MoETransformerBlock:   {}  |  {}".format(one_block, formula))
+        print("   其中: attn={}, experts={}*{}={}, gate={}, adaLN={}".format(
+              attn_params, num_experts, one_mlp, moe_mlp_params, gate_params, adaln_params))
+    else:
+        print("5. 单 TransformerBlock:      {}  |  (depth={})".format(one_block, depth))
+    total_calc += one_block * depth
+    print("   depth = {}, blocks 合计:   {}  |  {} * {} = {}".format(
+          depth, one_block * depth, one_block, depth, one_block * depth))
+
+    # 6. final_layer
+    # norm_final: elementwise_affine=False -> 0; linear: D * (p^2*out_ch) + p^2*out_ch; adaLN: D*2D+2D
+    final_linear = model.final_layer.linear
+    final_adaln = model.final_layer.adaLN_modulation[-1]
+    fl_linear = final_linear.weight.numel() + (final_linear.bias.numel() if final_linear.bias is not None else 0)
+    fl_adaln = final_adaln.weight.numel() + final_adaln.bias.numel()
+    final_params = fl_linear + fl_adaln
+    formula = "D*(p^2*out_ch)+p^2*out_ch + D*2D+2D = {} + {} = {}".format(fl_linear, fl_adaln, final_params)
+    print("6. final_layer:               {}  |  {}".format(final_params, formula))
+    total_calc += final_params
+
+    # 总计
+    actual_total = sum(p.numel() for p in model.parameters())
+    print("-" * 60)
+    print("公式合计: {}  |  实际 sum(parameters): {}".format(total_calc, actual_total))
+    print("总参数量: {} = {:.2f}M".format(actual_total, actual_total / 1e6))
+    print("=" * 60)
 
 
 #################################################################################
@@ -674,91 +1029,45 @@ xdimo_models = {
 
 if __name__ == '__main__':
     import torch
-    from thop import profile
-    import numpy as np
-    
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using device: {device}")
-    
-    # 创建测试数据
-    img = torch.randn(3, 16, 4, 32, 32).to(device)
-    t = torch.tensor([1, 2, 3]).to(device)
-    y = torch.tensor([1, 2, 3]).to(device)
-    
-    # 创建原始模型
-    print("\n===== Testing Original Model =====")
-    original_model = xdimo_XL_2().to(device)
-    
-    # 测试原始模型
+    print("=" * 60)
+    print("测试模型: xdimo-L/2-MoE")
+    print("=" * 60)
+    print("Device: {}".format(device))
+
+    # 使用 xdimo_models 构建 xdimo-L/2-MoE（extras=2 用于类别条件）
+    model = xdimo_models['xdimo-L/2-MoE'](extras=2, num_classes=1000).to(device)
+    input_size = 32
+    num_frames = 16
+    B, F, C, H, W = 2, num_frames, 4, input_size, input_size
+
+    # ---------- 1. 模型参数量（公式 + 具体数值） ----------
+    print("\n")
+    print_param_count_with_formula(model, input_size=input_size, num_classes=1000)
+
+    # ---------- 2. 前向传播每一步的输入/输出张量尺寸与公式 ----------
+    print("\n")
+    print("前向传播步骤与张量尺寸（verbose=True）")
+    print("-" * 60)
+    x = torch.randn(B, F, C, H, W).to(device)
+    t = torch.tensor([0]).to(device) if B == 1 else torch.tensor([0, 1]).to(device)
+    y = torch.tensor([0]).to(device) if B == 1 else torch.tensor([0, 1]).to(device)
+
     with torch.no_grad():
-        original_output = original_model(img, t, y)
-    
-    print(f"Original model output shape: {original_output.shape}")
-    
-    # 分析原始模型
-    flops, params = profile(original_model, inputs=(img, t))
-    print(f'Original FLOPs = {flops/1000**3:.2f}G')
-    print(f'Original Params = {params/1000**2:.2f}M')
-    
-    # 创建MoE模型
-    print("\n===== Testing MoE Model =====")
-    moe_model = xdimo(
-        depth=28, 
-        hidden_size=1152, 
-        patch_size=2, 
-        num_heads=16,
-        num_experts=4,       # MoE-specific parameters
-        top_k=2,
-        expert_capacity_factor=1.0
-    ).to(device)
-    
-    # 测试MoE模型
-    with torch.no_grad():
-        moe_output = moe_model(img, t, y)
-    
-    print(f"MoE model output shape: {moe_output.shape}")
-    
-    # 分析MoE模型
-    flops_moe, params_moe = profile(moe_model, inputs=(img, t))
-    print(f'MoE FLOPs = {flops_moe/1000**3:.2f}G')
-    print(f'MoE Params = {params_moe/1000**2:.2f}M')
-    
-    # 比较模型变化
-    print("\n===== Model Comparison =====")
-    print(f"Params change: {params_moe/params:.2f}x")
-    print(f"FLOPs change: {flops_moe/flops:.2f}x")
-    
-    # 检查模型结构
-    print("\n===== Model Structure =====")
-    print("Original model block type:", type(original_model.blocks[0]))
-    print("MoE model block type:", type(moe_model.blocks[0]))
-    
-    # 检查MoE模型组件
-    print("\nMoE block components:")
-    moe_block = moe_model.blocks[0]
-    print(f"- Has attention: {hasattr(moe_block, 'attn')}")
-    print(f"- Has MoE gate: {hasattr(moe_block, 'gate')}")
-    print(f"- Number of experts: {len(moe_block.experts)}")
-    
-    # 验证输出差异
-    print("\n===== Output Validation =====")
-    diff = torch.abs(original_output - moe_output).mean().item()
-    print(f"Output difference: {diff:.4f}")
-    
-    # 测试梯度传播
-    print("\n===== Gradient Test =====")
-    test_input = torch.randn(1, 16, 4, 32, 32).to(device).requires_grad_(True)
-    test_t = torch.tensor([1]).to(device)
-    test_y = torch.tensor([1]).to(device)
-    
-    # 使用MoE模型
-    moe_model.train()
-    output = moe_model(test_input, test_t, test_y)
-    loss = output.sum()
-    loss.backward()
-    
-    # 检查梯度
-    grad_norm = test_input.grad.data.norm().item()
-    print(f"Gradient norm: {grad_norm:.4f} (should be non-zero)")
-    
-    print("\nAll tests completed successfully!")
+        out = model(x, t, y=y, verbose=True)
+
+    print("-" * 60)
+    print("最终输出 out.shape = {}".format(tuple(out.shape)))
+    print("公式: (B, F, out_channels, H, W) = ({}, {}, {}, {}, {})".format(
+          B, F, model.out_channels, H, W))
+
+    # ---------- 3. 梯度检查 ----------
+    print("\n梯度检查:")
+    x_g = torch.randn(1, num_frames, 4, input_size, input_size).to(device).requires_grad_(True)
+    model.train()
+    o = model(x_g, torch.tensor([0]).to(device), y=torch.tensor([0]).to(device))
+    o.sum().backward()
+    print("  input.grad.norm = {:.4f} (应为非零)".format(x_g.grad.norm().item()))
+
+    print("\n全部测试完成 (xdimo-L/2-MoE)。")

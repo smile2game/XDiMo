@@ -1,7 +1,7 @@
 #!/bin/bash
-# Latte main 测试 | H200 单卡 | 结果见 output/logs/%J.output 与本目录 1gpu_test.log
-#JSUB -J latte-1gpu-test
-#JSUB -q gpu_h200
+# xdimo main 测试 | 6000ada 单卡 | 结果见 output/logs/%J.output 与本目录 1gpu_test.log
+#JSUB -J xdimo-1gpu-test
+#JSUB -q gpu_6000ada
 #JSUB -n 8
 #JSUB -gpgpu 1
 #JSUB -cwd /public/home/liuhuijie/dits/XDiMo
@@ -17,7 +17,7 @@ cd /public/home/liuhuijie/dits/XDiMo
 echo "=== nvidia-smi (before) ==="
 nvidia-smi
 
-python xdimo/models/latte.py 2>&1 | tee "$SCRIPT_DIR/1gpu_test.log"
+python xdimo/models/xdimo.py 2>&1 | tee "$SCRIPT_DIR/1gpu_test.log"
 
 echo "=== nvidia-smi (after) ==="
 nvidia-smi
